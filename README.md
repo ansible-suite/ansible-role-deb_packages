@@ -59,6 +59,42 @@ there. A package is installed only when it is missing or its requested
 `version` differs from the installed version. If installation fails, the role
 fixes broken dependencies and retries the installation.
 
+## Role workflow
+
+```mermaid
+graph TD
+    A[Start Role] --> B{deb_packages empty?}
+    B -- Yes --> Z[End]
+    B -- No --> C[Gather Package Facts]
+    C --> D{deb_packages_download_dir configured?}
+    D -- Yes --> E[Create configured cache directory on localhost]
+    D -- No --> F[Create temporary directory on localhost]
+    E --> G[Loop through deb_packages]
+    F --> G
+    
+    subgraph Package Installation
+        G --> H{Package missing or version mismatch?}
+        H -- No --> I[Skip Package]
+        H -- Yes --> J[Download .deb on localhost]
+        J --> K[Create temporary directory on target]
+        K --> L[Copy .deb from localhost to target]
+        L --> M[Install .deb via apt]
+        M --> N{Installation successful?}
+        N -- Yes --> O[Remove temp directory on target]
+        N -- No --> P[Fix broken package dependencies]
+        P --> Q[Retry installing .deb via apt]
+        Q --> O
+    end
+
+    I --> R{More packages?}
+    O --> R
+    R -- Yes --> G
+    R -- No --> S{Temporary dir created on localhost & deb_packages_cleanup?}
+    S -- Yes --> T[Remove temporary directory on localhost]
+    S -- No --> Z
+    T --> Z
+```
+
 ## Role variables
 
 | Variable | Default | Description |
