@@ -1,0 +1,45 @@
+---
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: apt
+  when: deb_packages | length > 0
+
+- name: Create the configured package directory on the controller
+  ansible.builtin.file:
+    path: "{{ deb_packages_download_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: true
+  when: deb_packages | length > 0 and deb_packages_download_dir | length > 0
+
+- name: Create a temporary package directory on the controller
+  ansible.builtin.tempfile:
+    state: directory
+  register: deb_packages_tmp_dir
+  delegate_to: localhost
+  run_once: true
+  when: deb_packages | length > 0 and deb_packages_download_dir | length == 0
+
+- name: Install Debian packages
+  ansible.builtin.include_tasks: install.yml
+  loop: "{{ deb_packages | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: >-
+    item.key not in ansible_facts.packages or
+    (item.value.version is defined and
+    ansible_facts.packages.get(item.key, [{}])[0].version | default('') is
+    version(item.value.version, '!='))
+
+- name: Remove the temporary package directory from the controller
+  ansible.builtin.file:
+    path: "{{ deb_packages_tmp_dir.path }}"
+    state: absent
+  delegate_to: localhost
+  run_once: true
+  when:
+    - deb_packages | length > 0
+    - deb_packages_download_dir | length == 0
+    - deb_packages_cleanup | bool
+    - deb_packages_tmp_dir is defined

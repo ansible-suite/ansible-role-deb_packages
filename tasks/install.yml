@@ -1,0 +1,43 @@
+---
+- name: Create a temporary package directory on the target
+  ansible.builtin.tempfile:
+    state: directory
+  register: deb_packages_target_tmp_dir
+
+- name: Download the Debian package on the controller
+  ansible.builtin.get_url:
+    url: "{{ item.value.url }}"
+    dest: >-
+      {{ (deb_packages_download_dir if deb_packages_download_dir | length > 0
+      else deb_packages_tmp_dir.path) }}/{{ item.key }}.deb
+    checksum: "{{ item.value.checksum | default(omit) }}"
+    mode: '0644'
+  delegate_to: localhost
+  run_once: true
+
+- name: Copy the Debian package to the target
+  ansible.builtin.copy:
+    src: >-
+      {{ (deb_packages_download_dir if deb_packages_download_dir | length > 0
+      else deb_packages_tmp_dir.path) }}/{{ item.key }}.deb
+    dest: "{{ deb_packages_target_tmp_dir.path }}/{{ item.key }}.deb"
+    mode: '0644'
+
+- name: Install the Debian package
+  block:
+    - name: Install the Debian package
+      ansible.builtin.apt:
+        deb: "{{ deb_packages_target_tmp_dir.path }}/{{ item.key }}.deb"
+  rescue:
+    - name: Fix broken package dependencies
+      ansible.builtin.apt:
+        state: fixed
+
+    - name: Retry installing the Debian package
+      ansible.builtin.apt:
+        deb: "{{ deb_packages_target_tmp_dir.path }}/{{ item.key }}.deb"
+
+- name: Remove the temporary package directory from the target
+  ansible.builtin.file:
+    path: "{{ deb_packages_target_tmp_dir.path }}"
+    state: absent

@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  author: ansible-suite
+  role_name: deb_packages
+  description: An ansible role for installing packages from .deb URLs
+  license: MIT
+  min_ansible_version: "2.16"
+
+collections:
+  - ansible.builtin
