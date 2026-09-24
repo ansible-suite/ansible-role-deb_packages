@@ -4,6 +4,7 @@
   - [Example `requirements.yml` for Ansible site](#example-requirementsyml-for-ansible-site)
   - [Example defaults](#example-defaults)
   - [Example playbook](#example-playbook)
+  - [Role workflow](#role-workflow)
   - [Role variables](#role-variables)
   - [Reference](#reference)
 
